@@ -1,0 +1,62 @@
+pipeline:
+  name: Kubernetes Deployment
+  identifier: kubernetes_deployment
+  projectIdentifier: <+input>
+  orgIdentifier: <+input>
+
+  stages:
+    - stage:
+        name: Deploy
+        identifier: Deploy
+        description: Deploy the selected primary artifact to Kubernetes.
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+
+          service:
+            serviceRef: <+input>
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: <+input>
+
+          environment:
+            environmentRef: <+input>
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: <+input>
+
+          execution:
+            steps:
+              - step:
+                  name: Rollout
+                  identifier: Rollout
+                  type: K8sRollingDeploy
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+                    filePaths: k8s/deployment.yaml,k8s/service.yaml
+                    instanceUnitType: Count
+                    instanceUnitCount: 1
+                  timeout: 10m
+
+              - step:
+                  name: Verify
+                  identifier: Verify
+                  type: ShellScript
+                  spec:
+                    shell: Bash
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |
+                          set -euo pipefail
+                          echo "Deployment verification should be performed by the Kubernetes connector/delegate."
+                          echo "Validate rollout status and resolved image in the target namespace."
+                    environmentVariables: []
+                  timeout: 5m
+        serviceDependencies: []
